@@ -45,7 +45,7 @@ Octree::Octree(char *fname)
 	else
 	{
 		printf("Wrong input format. Must be SOG/DCF.\n");
-		exit(0);
+		exit(1);
 	}
 }
 
