@@ -29,156 +29,157 @@
 #include <stdio.h>
 #include <string.h>
 
-const char typeName[11][10] = {"char","uchar","short","ushort","int","uint","float","double", "uint8", "float32", "int32"} ;
-const int typeSize[11] = {1,1,2,2,4,4,4,8,1,4,4} ;
-const int totalTypes = 11 ;
+const char typeName[11][10] = {"char", "uchar", "short", "ushort", "int", "uint", "float", "double", "uint8", "float32", "int32"};
+const int typeSize[11] = {1, 1, 2, 2, 4, 4, 4, 8, 1, 4, 4};
+const int totalTypes = 11;
 
 class PLYReader : public ModelReader
 {
 public:
 	// File handle
-	FILE* fin ;
+	FILE *fin;
 
 	// Number of triangles
-	int numTrians, curtrian ;
+	int numTrians, curtrian;
 
 	// Number of vertices
-	int numVerts, curvert ;
+	int numVerts, curvert;
 
 	// Vertex array
-	float* vertarray ;
+	float *vertarray;
 
 	// Bounding box
-	float min[3], max[3] ;
-	float rawmin[3], rawmax[3] ;
+	float min[3], max[3];
+	float rawmin[3], rawmax[3];
 
 	// Size of box
-	float maxsize ;
+	float maxsize;
 
 	// Types and info
-	int extraVertex ;
+	int extraVertex;
 
 	// Temporary array for non-triangle faces
-	int temparray[64] ;
-	int tottri, curtri ;
+	int temparray[64];
+	int tottri, curtri;
 
 	// Mode
-	int mode ; // 0 for asc, 1 for little-endian, 2 for big endian
+	int mode; // 0 for asc, 1 for little-endian, 2 for big endian
 
 	// Mode
-	int vmode ;
+	int vmode;
 
 	// Offset for reading faces
-	long offset ;
+	long offset;
 
 public:
 	/// Constructor
-	PLYReader( char* fname, float scl ) 
+	PLYReader(char *fname, float scl)
 	{
-		if ( ! ( fin = fopen( fname, "rb" ) ) )
+		if (!(fin = fopen(fname, "rb")))
 		{
-			printf("Unable to open file %s\n", fname) ;	
+			printf("Unable to open file %s\n", fname);
 		};
 
 		// Scan to get info
-//		printf("Scanning file for bounding box...\n");
-		
+		//		printf("Scanning file for bounding box...\n");
+
 		// Parse header
-		int vmode = 0, lines = 0 ;
-		this->numTrians = this->numVerts = this->extraVertex = 0 ;
+		int vmode = 0, lines = 0;
+		this->numTrians = this->numVerts = this->extraVertex = 0;
 		char seps[] = " ,\t\n\r ";
-		seps[5] = 10 ;
-		while ( 1 )
+		seps[5] = 10;
+		while (1)
 		{
-			char header[1024] ;
-			fgets( header, 1024, fin ) ;
+			char header[1024];
+			fgets(header, 1024, fin);
 			// printf("%s\n", header) ;
 
-			char* token = strtok( header, seps ) ;
+			char *token = strtok(header, seps);
 			// token[ strlen(token) - 1 ] = '\0' ;
 			// int comp = strcmp ( token, "end_header" ) ;
 			// printf("%s %d\n", token, comp ) ;
 			// char c = getchar() ;
 
-
-
-			if ( ! strcmp ( token, "end_header" ) )
+			if (!strcmp(token, "end_header"))
 			{
 				// Header finished
 				// printf("End encountered!") ;
-				break ;
-			} else if ( ! strcmp( token, "format" ) ) 
+				break;
+			}
+			else if (!strcmp(token, "format"))
 			{
 				// Format specification
-				token = strtok ( NULL, seps ) ;
-				if ( !strcmp ( token, "ascii" ) )
+				token = strtok(NULL, seps);
+				if (!strcmp(token, "ascii"))
 				{
-					this->mode = 0 ;
+					this->mode = 0;
 				}
-				else if ( ! strcmp ( token, "binary_big_endian") )
+				else if (!strcmp(token, "binary_big_endian"))
 				{
-					this->mode = 2 ;
+					this->mode = 2;
 				}
 				else
 				{
-					this->mode = 1 ;
+					this->mode = 1;
 				}
-				
-			} else if ( ! strcmp( token, "element") )
+			}
+			else if (!strcmp(token, "element"))
 			{
-				vmode = 0 ;
-				lines = 0 ;
-				token = strtok( NULL, seps ) ;
-				if ( !strcmp( token, "vertex" ) )
+				vmode = 0;
+				lines = 0;
+				token = strtok(NULL, seps);
+				if (!strcmp(token, "vertex"))
 				{
 					// Vertex count
-					token = strtok( NULL, seps ) ;
-					sscanf( token, "%d", &(this->numVerts) ) ;
+					token = strtok(NULL, seps);
+					sscanf(token, "%d", &(this->numVerts));
 
 					// Enter vertex mode
-					vmode = 1 ;
-				} else if ( !strcmp( token, "face" ) )
+					vmode = 1;
+				}
+				else if (!strcmp(token, "face"))
 				{
 					// Face count
-					token = strtok( NULL, seps ) ;
-					sscanf( token, "%d", &(this->numTrians) ) ;
+					token = strtok(NULL, seps);
+					sscanf(token, "%d", &(this->numTrians));
 
 					// Enter face mode
-					vmode = 2 ;
+					vmode = 2;
 				}
-			} else if ( ! strcmp( token, "property" ) ) 
+			}
+			else if (!strcmp(token, "property"))
 			{
-				switch ( vmode )
+				switch (vmode)
 				{
 				case 1: // Vertex mode
-					if ( lines >= 3 )
+					if (lines >= 3)
 					{
 						// Extra storage for each vertex
-						token = strtok( NULL, seps ) ;
+						token = strtok(NULL, seps);
 
-						for ( int i = 0 ; i < totalTypes ; i ++ )
+						for (int i = 0; i < totalTypes; i++)
 						{
-							if ( ! strcmp( token, typeName[i] ) )
+							if (!strcmp(token, typeName[i]))
 							{
-								this->extraVertex += typeSize[i] ;
-								break ;
+								this->extraVertex += typeSize[i];
+								break;
 							}
 						}
 					}
 
-					lines ++ ;
-					break ;
+					lines++;
+					break;
 
 				case 2: // Face mode
 
-					break ;
+					break;
 				}
 			}
 		}
 		//printf("Header info: %d vertices, %d faces, %d extra bytes per vertex. At %d\n", this->numVerts, this->numTrians, this->extraVertex, ftell( fin ) );
-		this->vertarray = new float [ 3 * this->numVerts ] ;
+		this->vertarray = new float[3 * this->numVerts];
 		// char c = getchar() ;
-		
+
 		/*
 		float *ok= new float[ numVerts * 3 ] ;
 		char c = getchar() ;
@@ -196,32 +197,31 @@ public:
 		printf("Done");
 		*/
 
-
 		// Start reading vertices
-		int i ;
-		char temp[1024] ;
-		if ( mode > 0 )
+		int i;
+		char temp[1024];
+		if (mode > 0)
 		{
-			for ( i = 0 ; i < this->numVerts ; i ++ )
+			for (i = 0; i < this->numVerts; i++)
 			{
-				int haveread = 0 ;
-				if ( ( haveread = fread( &(vertarray[ 3 * i ]), sizeof( float ), 3, fin ) ) != 3 )
+				int haveread = 0;
+				if ((haveread = fread(&(vertarray[3 * i]), sizeof(float), 3, fin)) != 3)
 				{
 
-				  if( feof( fin ) )      
-				  {
-					 printf( "Read error %d ", ftell( fin ) );
-				  }
+					if (feof(fin))
+					{
+						printf("Read error %ld ", ftell(fin));
+					}
 
-					printf("%d\n", haveread ) ;
-					exit(0) ;
+					printf("%d\n", haveread);
+					exit(0);
 				}
-				if ( mode == 2 )
+				if (mode == 2)
 				{
 					// Flip bits
-					for ( int j = 0 ; j < 3 ; j ++ )
+					for (int j = 0; j < 3; j++)
 					{
-						flipBits32( & (vertarray[3*i + j]) ) ;
+						flipBits32(&(vertarray[3 * i + j]));
 					}
 				}
 				/*
@@ -233,212 +233,205 @@ public:
 				*/
 
 				// Read extra data
-				fread( temp, 1, this->extraVertex, fin ) ;
-				if ( i == 0 )
+				fread(temp, 1, this->extraVertex, fin);
+				if (i == 0)
 				{
-					for ( int j = 0 ; j < 3 ; j ++ )
+					for (int j = 0; j < 3; j++)
 					{
-						rawmin[j] = rawmax[j] = vertarray[3 * i + j] ;
+						rawmin[j] = rawmax[j] = vertarray[3 * i + j];
 					}
 				}
 				else
 				{
-					for ( int k = 0 ; k < 3 ; k ++ )
+					for (int k = 0; k < 3; k++)
 					{
-						if ( rawmin[k] > vertarray[3 * i + k] )
+						if (rawmin[k] > vertarray[3 * i + k])
 						{
-							rawmin[k] = vertarray[3 * i + k] ;
+							rawmin[k] = vertarray[3 * i + k];
 						}
-						if ( rawmax[k] < vertarray[3 * i + k] )
+						if (rawmax[k] < vertarray[3 * i + k])
 						{
-							rawmax[k] = vertarray[3 * i + k] ;
+							rawmax[k] = vertarray[3 * i + k];
 						}
 					}
 				}
-
 			}
 		}
 		else
 		{
 			// ASCII mode
 
-
-			for ( i = 0 ; i < this->numVerts ; i ++ )
+			for (i = 0; i < this->numVerts; i++)
 			{
-				fgets ( temp, 1024, fin ) ;
+				fgets(temp, 1024, fin);
 
 				char seps[] = " ,\t\n";
-				char* token = strtok( temp, seps ) ;
+				char *token = strtok(temp, seps);
 
-				sscanf( token, "%f", &(vertarray[ 3 * i ] ) ) ;
-				token = strtok( NULL, seps ) ;
-				sscanf( token, "%f", &(vertarray[ 3 * i + 1 ] ) ) ;
-				token = strtok( NULL, seps ) ;
-				sscanf( token, "%f", &(vertarray[ 3 * i + 2 ] ) ) ;
+				sscanf(token, "%f", &(vertarray[3 * i]));
+				token = strtok(NULL, seps);
+				sscanf(token, "%f", &(vertarray[3 * i + 1]));
+				token = strtok(NULL, seps);
+				sscanf(token, "%f", &(vertarray[3 * i + 2]));
 
-				if ( i == 0 )
+				if (i == 0)
 				{
-					for ( int j = 0 ; j < 3 ; j ++ )
+					for (int j = 0; j < 3; j++)
 					{
-						rawmin[j] = rawmax[j] = vertarray[3 * i + j] ;
+						rawmin[j] = rawmax[j] = vertarray[3 * i + j];
 					}
 				}
 				else
 				{
-					for ( int k = 0 ; k < 3 ; k ++ )
+					for (int k = 0; k < 3; k++)
 					{
-						if ( rawmin[k] > vertarray[3 * i + k] )
+						if (rawmin[k] > vertarray[3 * i + k])
 						{
-							rawmin[k] = vertarray[3 * i + k] ;
+							rawmin[k] = vertarray[3 * i + k];
 						}
-						if ( rawmax[k] < vertarray[3 * i + k] )
+						if (rawmax[k] < vertarray[3 * i + k])
 						{
-							rawmax[k] = vertarray[3 * i + k] ;
+							rawmax[k] = vertarray[3 * i + k];
 						}
 					}
 				}
-
 			}
 		}
 
-
-		maxsize = rawmax[0] - rawmin[0] ;
-		if ( rawmax[1] - rawmin[1] > maxsize )
+		maxsize = rawmax[0] - rawmin[0];
+		if (rawmax[1] - rawmin[1] > maxsize)
 		{
-			maxsize = rawmax[1] - rawmin[1] ;
+			maxsize = rawmax[1] - rawmin[1];
 		}
-		if ( rawmax[2] - rawmin[2] > maxsize )
+		if (rawmax[2] - rawmin[2] > maxsize)
 		{
-			maxsize = rawmax[2] - rawmin[2] ;
+			maxsize = rawmax[2] - rawmin[2];
 		}
 
-		for ( i = 0 ; i < 3 ; i ++ )
+		for (i = 0; i < 3; i++)
 		{
-			min[i] = ( rawmax[i] + rawmin[i] ) / 2 - maxsize / 2 ;
-			max[i] = ( rawmax[i] + rawmin[i] ) / 2 + maxsize / 2 ;
+			min[i] = (rawmax[i] + rawmin[i]) / 2 - maxsize / 2;
+			max[i] = (rawmax[i] + rawmin[i]) / 2 + maxsize / 2;
 		}
 
 		// printf( "Low corner: %f %f %f   High corner %f %f %f \n", min[0], min[1], min[2], max[0], max[1], max[2] );
 		// printf( "Maxdif: %f \n", maxsize );
 
 		// Scale
-		for ( i = 0 ; i < 3 ; i ++ )
+		for (i = 0; i < 3; i++)
 		{
-			min[i] -= maxsize * ( 1 / scl - 1 ) / 2 ;
+			min[i] -= maxsize * (1 / scl - 1) / 2;
 		}
-		maxsize *= ( 1 / scl ) ;
+		maxsize *= (1 / scl);
 
-		// Reset 
-		this->offset = ftell( fin ) ;
-		curtrian = 0 ;
-
+		// Reset
+		this->offset = ftell(fin);
+		curtrian = 0;
 	};
 
-	void reset( )
+	void reset()
 	{
-		curtrian = 0 ;
-		curvert = 0 ;
+		curtrian = 0;
+		curvert = 0;
 
-		curtri = 0 ;
-		tottri = 0 ;
+		curtri = 0;
+		tottri = 0;
 
-		fseek( fin, offset, SEEK_SET ) ;
+		fseek(fin, offset, SEEK_SET);
 	}
 
 	/// Get next triangle
-	Triangle* getNextTriangle( )
+	Triangle *getNextTriangle()
 	{
-		if ( curtrian == numTrians )
+		if (curtrian == numTrians)
 		{
-			return NULL ;
-		}	
+			return NULL;
+		}
 
-		if ( curtri == tottri )
+		if (curtri == tottri)
 		{
 			// Read next face
-			unsigned char num ;
+			unsigned char num;
 
-
-			if ( mode > 0 )
+			if (mode > 0)
 			{
 				// Read number of vertices in the face
-				fread( &num, sizeof( unsigned char ), 1, fin ) ;
-				fread( temparray, sizeof( int ), num, fin ) ;
-				if ( mode == 2 )
+				fread(&num, sizeof(unsigned char), 1, fin);
+				fread(temparray, sizeof(int), num, fin);
+				if (mode == 2)
 				{
-					for ( int i = 0 ; i < num ; i ++ )
+					for (int i = 0; i < num; i++)
 					{
-						flipBits32( &(temparray[i]) ) ;
+						flipBits32(&(temparray[i]));
 					}
 				}
-	//		printf("%d\n", tottri) ;
+				//		printf("%d\n", tottri) ;
 				// printf("\n") ;
 
 				// if ( curtrian == 10 ) exit(1) ;
 			}
 			else
 			{
-				char temp[1024] ;
-				fgets( temp, 1024, fin ) ;
+				char temp[1024];
+				fgets(temp, 1024, fin);
 
 				char seps[] = " ,\t\n";
-				char* token = strtok( temp, seps ) ;
+				char *token = strtok(temp, seps);
 
-				sscanf( token, "%d", &num ) ;
+				sscanf(token, "%d", &num);
 
-				for ( int i = 0 ; i < num ; i ++ )
+				for (int i = 0; i < num; i++)
 				{
-					token = strtok( NULL, seps ) ;
-					sscanf( token, "%d", &(temparray[i]) ) ;
+					token = strtok(NULL, seps);
+					sscanf(token, "%d", &(temparray[i]));
 				}
 			}
 
-
-			tottri = num - 2 ;
-			curtri = 0 ;
-			curtrian ++ ;
+			tottri = num - 2;
+			curtri = 0;
+			curtrian++;
 		}
 
-		Triangle* t = new Triangle() ;
-		for ( int i = 0 ; i < 3 ; i ++ )
+		Triangle *t = new Triangle();
+		for (int i = 0; i < 3; i++)
 		{
-			t->vt[0][i] = vertarray[ 3 * temparray[0] + i ] ;
-			t->vt[1][i] = vertarray[ 3 * temparray[curtri + 1] + i ] ;
-			t->vt[2][i] = vertarray[ 3 * temparray[curtri + 2] + i ] ;
+			t->vt[0][i] = vertarray[3 * temparray[0] + i];
+			t->vt[1][i] = vertarray[3 * temparray[curtri + 1] + i];
+			t->vt[2][i] = vertarray[3 * temparray[curtri + 2] + i];
 		}
-		
-		curtri ++ ;
+
+		curtri++;
 
 		// printf("%d %d %d\n", temparray[0], temparray[curtri + 1], temparray[curtri + 2]);
 
-		return t ;
+		return t;
 	};
-	
-	/// Get next triangle
-	int getNextTriangle( int ind[3] )
-	{
-		if ( curtrian == numTrians )
-		{
-			return 0 ;
-		}		
 
-		if ( curtri == tottri )
+	/// Get next triangle
+	int getNextTriangle(int ind[3])
+	{
+		if (curtrian == numTrians)
+		{
+			return 0;
+		}
+
+		if (curtri == tottri)
 		{
 			// Read next face
-			unsigned char num ;
+			unsigned char num;
 
-			if ( mode > 0 )
+			if (mode > 0)
 			{
 				// Read number of vertices in the face
-				fread( &num, sizeof( unsigned char ), 1, fin ) ;
+				fread(&num, sizeof(unsigned char), 1, fin);
 
 				// Read array of indices
-				fread( temparray, sizeof( int ), num, fin ) ;
-				if ( mode == 2 )
+				fread(temparray, sizeof(int), num, fin);
+				if (mode == 2)
 				{
-					for ( int i = 0 ; i < num ; i ++ )
+					for (int i = 0; i < num; i++)
 					{
-						flipBits32( &(temparray[i]) ) ;
+						flipBits32(&(temparray[i]));
 						// printf("%d ", temparray[i]) ;
 					}
 				}
@@ -448,124 +441,121 @@ public:
 			}
 			else
 			{
-				char temp[1024] ;
-				fgets( temp, 1024, fin ) ;
+				char temp[1024];
+				fgets(temp, 1024, fin);
 
 				char seps[] = " ,\t\n";
-				char* token = strtok( temp, seps ) ;
+				char *token = strtok(temp, seps);
 
-				sscanf( token, "%d", &num ) ;
+				sscanf(token, "%d", &num);
 
-				for ( int i = 0 ; i < num ; i ++ )
+				for (int i = 0; i < num; i++)
 				{
-					token = strtok( NULL, seps ) ;
-					sscanf( token, "%d", &(temparray[i]) ) ;
+					token = strtok(NULL, seps);
+					sscanf(token, "%d", &(temparray[i]));
 				}
 			}
 
-			tottri = num - 2 ;
-			curtri = 0 ;
-			curtrian ++ ;
+			tottri = num - 2;
+			curtri = 0;
+			curtrian++;
 		}
 
-		ind[0] = temparray[0] ;
-		ind[1] = temparray[curtri + 1] ;
-		ind[2] = temparray[curtri + 2] ;
-		
-		curtri ++ ;
-		return 1 ;
+		ind[0] = temparray[0];
+		ind[1] = temparray[curtri + 1];
+		ind[2] = temparray[curtri + 2];
+
+		curtri++;
+		return 1;
 	};
 
-	void printInfo ( )
+	void printInfo()
 	{
-		printf("Vertices: %d Polygons: %d\n",this->numVerts, this->numTrians) ;
+		printf("Vertices: %d Polygons: %d\n", this->numVerts, this->numTrians);
 	}
 
-
 	/// Get bounding box
-	float getBoundingBox ( float origin[3] )
+	float getBoundingBox(float origin[3])
 	{
-		for ( int i = 0 ; i < 3 ; i ++ )
+		for (int i = 0; i < 3; i++)
 		{
-			origin[i] = min[i] ;
+			origin[i] = min[i];
 		}
 
-		return maxsize ;
+		return maxsize;
 	};
 
-	void getRawBoundingBox ( float low[3], float high[3] )
+	void getRawBoundingBox(float low[3], float high[3])
 	{
-		for ( int i = 0 ; i < 3 ; i ++ )
+		for (int i = 0; i < 3; i++)
 		{
-			low[i] = rawmin[i] ;
-			high[i] = rawmax[i] ;
+			low[i] = rawmin[i];
+			high[i] = rawmax[i];
 		}
 	}
 
 	/// Get storage size
-	int getMemory ( ) 
+	int getMemory()
 	{
-		return sizeof ( class PLYReader ) + this->numVerts * sizeof( float ) * 3 ;	
+		return sizeof(class PLYReader) + this->numVerts * sizeof(float) * 3;
 	};
 
 	// Flip bits
 
-	void flipBits32 ( void *x )
+	void flipBits32(void *x)
 	{
 		unsigned char *temp = (unsigned char *)x;
 		unsigned char swap;
-		
-		swap = temp [ 0 ];
-		temp [ 0 ] = temp [ 3 ];
-		temp [ 3 ] = swap;
 
-		swap = temp [ 1 ];
-		temp [ 1 ] = temp [ 2 ];
-		temp [ 2 ] = swap;
+		swap = temp[0];
+		temp[0] = temp[3];
+		temp[3] = swap;
+
+		swap = temp[1];
+		temp[1] = temp[2];
+		temp[2] = swap;
 	}
 
-	void printBits32 ( void *x )
+	void printBits32(void *x)
 	{
 		unsigned char *temp = (unsigned char *)x;
 
-		printf("%2x %2x %2x %2x\n", temp[0], temp[1], temp[2], temp[3]) ;
+		printf("%2x %2x %2x %2x\n", temp[0], temp[1], temp[2], temp[3]);
 	}
-	
+
 	int getNumTriangles()
 	{
-		return this->numTrians ;
+		return this->numTrians;
 	}
 
 	int getNumVertices()
 	{
-		return this->numVerts ;
+		return this->numVerts;
 	}
 
-	float* getVertex( int ind )
+	float *getVertex(int ind)
 	{
-		return &(this->vertarray[ 3 * ind ]) ;
+		return &(this->vertarray[3 * ind]);
 	}
 
-	void getNextVertex( float v[3] )
+	void getNextVertex(float v[3])
 	{
-		v[0] = vertarray[ 3 * curvert ]  ;
-		v[1] = vertarray[ 3 * curvert + 1 ]  ;
-		v[2] = vertarray[ 3 * curvert + 2 ]  ;
+		v[0] = vertarray[3 * curvert];
+		v[1] = vertarray[3 * curvert + 1];
+		v[2] = vertarray[3 * curvert + 2];
 
-		curvert ++ ;
+		curvert++;
 	}
 
-	int getMode( )
+	int getMode()
 	{
-		return this->mode ;
+		return this->mode;
 	}
 
 	void close()
 	{
-		fclose( this->fin ) ;
+		fclose(this->fin);
 	}
-
 };
-
 
 #endif
